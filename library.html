@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ROM Library Manager</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .upload-area {
+            border: 3px dashed #666;
+            border-radius: 10px;
+            padding: 50px;
+            text-align: center;
+            margin-bottom: 30px;
+            background: #2a2a2a;
+            transition: all 0.3s ease;
+        }
+
+        .upload-area.dragover {
+            border-color: #4CAF50;
+            background: #333;
+        }
+
+        .upload-btn {
+            background: #4CAF50;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+        }
+
+        .upload-btn:hover {
+            background: #45a049;
+        }
+
+        .progress-container {
+            width: 100%;
+            background: #333;
+            border-radius: 10px;
+            margin: 10px 0;
+            display: none;
+        }
+
+        .progress-bar {
+            height: 20px;
+            background: #4CAF50;
+            border-radius: 10px;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .systems-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .system-card {
+            background: #2a2a2a;
+            border-radius: 10px;
+            padding: 20px;
+            border: 1px solid #444;
+        }
+
+        .system-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #4CAF50;
+        }
+
+        .rom-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .rom-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            margin: 5px 0;
+            background: #333;
+            border-radius: 5px;
+            border: 1px solid #444;
+        }
+
+        .rom-name {
+            flex: 1;
+            margin-right: 10px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .rom-size {
+            color: #aaa;
+            font-size: 12px;
+            margin-right: 10px;
+        }
+
+        .rom-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .action-btn {
+            padding: 5px 10px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .play-btn {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .delete-btn {
+            background: #f44336;
+            color: white;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        .stat-label {
+            color: #aaa;
+            font-size: 14px;
+        }
+
+        .search-container {
+            margin-bottom: 20px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 15px;
+            border: 1px solid #444;
+            border-radius: 5px;
+            background: #333;
+            color: #fff;
+            font-size: 16px;
+        }
+
+        .filters {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 8px 16px;
+            border: 1px solid #444;
+            border-radius: 5px;
+            background: #333;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .filter-btn.active {
+            background: #4CAF50;
+            border-color: #4CAF50;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #aaa;
+        }
+
+        @media (max-width: 768px) {
+            .systems-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stats {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .filters {
+                justify-content: center;
+            }
+
+            .rom-item {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .rom-info {
+                min-width: auto;
+                margin-bottom: 10px;
+            }
+
+            .rom-controls {
+                justify-content: space-between;
+                width: 100%;
+            }
+
+            .console-selector {
+                flex: 1;
+                margin-right: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ROM Library Manager</h1>
+
+        <div class="stats">
+            <div class="stat-item">
+                <div class="stat-number" id="totalRoms">0</div>
+                <div class="stat-label">Total ROMs</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number" id="totalSystems">0</div>
+                <div class="stat-label">Systems</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number" id="totalSize">0 MB</div>
+                <div class="stat-label">Total Size</div>
+            </div>
+            <div class="stat-item">
+                <button class="upload-btn" id="deleteAllBtn" onclick="romLibrary.deleteAllRoms()" style="background: #f44336;">
+                    Delete All ROMs
+                </button>
+            </div>
+        </div></div>
+
+        <div class="upload-area" id="uploadArea">
+            <h2>Upload ROM Files</h2>
+            <p>Drag and drop ROM files or folders here, or click to browse</p>
+            <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                Browse Files
+            </button>
+            <button class="upload-btn" onclick="document.getElementById('folderInput').click()">
+                Browse Folders
+            </button>
+            <input type="file" id="fileInput" multiple accept=".zip,.rar,.7z,.rom,.nes,.smc,.sfc,.gb,.gbc,.gba,.md,.gen,.32x,.gg,.sg,.ms,.pce,.tg16,.ngp,.ngc,.ws,.wsc,.n64,.z64,.v64,.nds,.3ds,.iso,.cue,.bin,.img,.mdf,.pbp,.cso,.prx,.elf,.dol,.gcm,.wbfs,.wad,.min,.max">
+            <input type="file" id="folderInput" webkitdirectory multiple>
+
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+        </div>
+
+        <div class="search-container">
+            <input type="text" class="search-input" id="searchInput" placeholder="Search ROMs...">
+        </div>
+
+        <div class="filters" id="filters">
+            <button class="filter-btn active" data-system="all">All Systems</button>
+        </div>
+
+        <div class="systems-grid" id="systemsGrid">
+            <div class="loading">Upload ROM files to get started!</div>
+        </div>
+    </div>
+
+    <script src="data/compression/libunrar.js"></script>
+    <script src="data/compression/extract7z.js"></script>
+    <script src="data/compression/extractzip.js"></script>
+    <script>
+        class ROMLibrary {
+            constructor() {
+                this.roms = {};
+                this.systemExtensions = {
+                    'Nintendo Entertainment System': ['.nes', '.unf', '.unif'],
+                    'Super Nintendo': ['.smc', '.sfc', '.fig', '.swc'],
+                    'Game Boy': ['.gb', '.sgb'],
+                    'Game Boy Color': ['.gbc'],
+                    'Game Boy Advance': ['.gba', '.agb'],
+                    'Nintendo 64': ['.n64', '.z64', '.v64', '.rom'],
+                    'Nintendo DS': ['.nds', '.srl'],
+                    'Nintendo 3DS': ['.3ds', '.cci', '.cxi', '.app'],
+                    'Sega Genesis': ['.md', '.gen', '.bin', '.smd'],
+                    'Sega 32X': ['.32x'],
+                    'Sega Game Gear': ['.gg'],
+                    'Sega Master System': ['.sms', '.sg'],
+                    'PC Engine': ['.pce', '.tg16', '.sgx'],
+                    'Neo Geo Pocket': ['.ngp', '.ngc'],
+                    'WonderSwan': ['.ws', '.wsc'],
+                    'PlayStation': ['.bin', '.cue', '.img', '.mdf', '.pbp', '.toc', '.cbn', '.m3u'],
+                    'PlayStation 2': ['.iso', '.cso', '.bin', '.mdf', '.nrg'],
+                    'PlayStation Portable': ['.iso', '.cso', '.pbp', '.prx', '.elf'],
+                    'GameCube': ['.iso', '.gcm', '.ciso', '.wbfs', '.dol'],
+                    'Wii': ['.iso', '.wbfs', '.ciso', '.wad'],
+                    'Arcade': ['.zip', '.7z'],
+                    'Atari 2600': ['.a26', '.bin'],
+                    'Atari 5200': ['.a52', '.bin'],
+                    'Atari 7800': ['.a78', '.bin'],
+                    'Atari Lynx': ['.lnx'],
+                    'Virtual Boy': ['.vb', '.vboy'],
+                    'PC-FX': ['.cue', '.ccd', '.toc'],
+                    'Saturn': ['.cue', '.bin', '.img', '.iso', '.mdf'],
+                    'Dreamcast': ['.cdi', '.gdi', '.cue', '.bin'],
+                    'Unknown': []
+                };
+
+                this.init();
+            }
+
+            init() {
+                this.setupEventListeners();
+                this.loadFromStorage();
+                this.updateDisplay();
+            }
+
+            setupEventListeners() {
+                const uploadArea = document.getElementById('uploadArea');
+                const fileInput = document.getElementById('fileInput');
+                const folderInput = document.getElementById('folderInput');
+                const searchInput = document.getElementById('searchInput');
+
+                // Drag and drop
+                uploadArea.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    uploadArea.classList.add('dragover');
+                });
+
+                uploadArea.addEventListener('dragleave', () => {
+                    uploadArea.classList.remove('dragover');
+                });
+
+                uploadArea.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    uploadArea.classList.remove('dragover');
+                    this.handleFiles(e.dataTransfer.files);
+                });
+
+                // File inputs
+                fileInput.addEventListener('change', (e) => {
+                    this.handleFiles(e.target.files);
+                });
+
+                folderInput.addEventListener('change', (e) => {
+                    this.handleFiles(e.target.files);
+                });
+
+                // Search
+                searchInput.addEventListener('input', (e) => {
+                    this.filterRoms(e.target.value);
+                });
+            }
+
+            async handleFiles(files) {
+                const progressContainer = document.getElementById('progressContainer');
+                const progressBar = document.getElementById('progressBar');
+
+                progressContainer.style.display = 'block';
+
+                const totalFiles = files.length;
+                let processedFiles = 0;
+
+                for (let file of files) {
+                    await this.processFile(file);
+                    processedFiles++;
+
+                    const progress = (processedFiles / totalFiles) * 100;
+                    progressBar.style.width = progress + '%';
+                }
+
+                progressContainer.style.display = 'none';
+                this.saveToStorage();
+                this.updateDisplay();
+            }
+
+            async processFile(file) {
+                try {
+                    const fileName = file.name;
+                    const fileExtension = '.' + fileName.split('.').pop().toLowerCase();
+                    
+                    // Handle compressed files
+                    if (['.zip', '.rar', '.7z'].includes(fileExtension)) {
+                        const fallbackSystem = await this.detectSystem(fileName, fileExtension);
+                        await this.extractAndProcessArchive(file, fallbackSystem);
+                    } else {
+                        const system = await this.detectSystem(fileName, fileExtension, file);
+                        this.addRom(fileName, file, system);
+                    }
+                } catch (error) {
+                    console.error('Error processing file:', file.name, error);
+                }
+            }
+
+            async extractAndProcessArchive(file, fallbackSystem) {
+                try {
+                    const buffer = await file.arrayBuffer();
+                    const uint8Array = new Uint8Array(buffer);
+
+                    let extractedFiles = [];
+
+                    if (file.name.endsWith('.zip')) {
+                        // Use JSZip for ZIP files
+                        if (typeof JSZip !== 'undefined') {
+                            const zip = new JSZip();
+                            const zipContent = await zip.loadAsync(uint8Array);
+
+                            for (let filename in zipContent.files) {
+                                if (!zipContent.files[filename].dir) {
+                                    const fileData = await zipContent.files[filename].async('uint8array');
+                                    extractedFiles.push({
+                                        name: filename,
+                                        data: fileData
+                                    });
+                                }
+                            }
+                        }
+                    } else if (file.name.endsWith('.rar')) {
+                        // Use libunrar for RAR files
+                        if (typeof readRARContent !== 'undefined') {
+                            const rarData = [{
+                                name: file.name,
+                                content: uint8Array
+                            }];
+
+                            const extracted = readRARContent(rarData);
+                            if (extracted && extracted.ls) {
+                                this.extractFilesFromRARTree(extracted.ls, extractedFiles);
+                            }
+                        }
+                    } else if (file.name.endsWith('.7z')) {
+                        // Use 7z.js for 7Z files
+                        if (typeof extract7z !== 'undefined') {
+                            const extracted = await extract7z(uint8Array);
+                            for (let item of extracted) {
+                                if (item.type === 'file') {
+                                    extractedFiles.push({
+                                        name: item.name,
+                                        data: item.content
+                                    });
+                                }
+                            }
+                        }
+                    }
+
+                    // Process extracted files
+                    for (let extractedFile of extractedFiles) {
+                        const ext = '.' + extractedFile.name.split('.').pop().toLowerCase();
+                        const blob = new Blob([extractedFile.data], { type: 'application/octet-stream' });
+                        const system = await this.detectSystem(extractedFile.name, ext, blob) || fallbackSystem;
+
+                        this.addRom(extractedFile.name, blob, system);
+                    }
+
+                } catch (error) {
+                    console.error('Error extracting archive:', error);
+                    // Fallback: treat as regular file
+                    this.addRom(file.name, file, fallbackSystem);
+                }
+            }
+
+            extractFilesFromRARTree(tree, extractedFiles) {
+                for (let key in tree) {
+                    const item = tree[key];
+                    if (item.type === 'file') {
+                        extractedFiles.push({
+                            name: item.fullFileName || key,
+                            data: item.fileContent
+                        });
+                    } else if (item.type === 'dir' && item.ls) {
+                        this.extractFilesFromRARTree(item.ls, extractedFiles);
+                    }
+                }
+            }
+
+            async detectSystem(fileName, extension, fileData = null) {
+                const lowerFileName = fileName.toLowerCase();
+                
+                // First try game database lookup
+                const dbDetection = this.detectByGameDatabase(lowerFileName);
+                if (dbDetection && dbDetection !== 'Unknown') {
+                    return dbDetection;
+                }
+
+                // Try file header analysis if file data is available
+                if (fileData) {
+                    const headerDetection = await this.detectByFileHeader(fileData, extension);
+                    if (headerDetection && headerDetection !== 'Unknown') {
+                        return headerDetection;
+                    }
+                }
+
+                // Enhanced extension-based detection with disambiguation
+                const extensionDetection = this.detectByExtension(extension, lowerFileName);
+                if (extensionDetection && extensionDetection !== 'Unknown') {
+                    return extensionDetection;
+                }
+
+                // Special cases based on filename patterns
+                if (lowerFileName.includes('arcade') || lowerFileName.includes('mame') || lowerFileName.includes('neogeo')) {
+                    return 'Arcade';
+                }
+
+                return 'Unknown';
+            }
+
+            detectByGameDatabase(fileName) {
+                // Common game patterns for different systems
+                const gamePatterns = {
+                    'Nintendo Entertainment System': [
+                        'super mario bros', 'zelda', 'metroid', 'mega man', 'castlevania', 'contra', 'double dragon',
+                        'final fantasy', 'dragon quest', 'tetris', 'punch-out', 'duck hunt', 'excitebike'
+                    ],
+                    'Super Nintendo': [
+                        'super mario world', 'super mario kart', 'zelda.*link.*past', 'super metroid', 'chrono trigger',
+                        'final fantasy.*vi', 'secret of mana', 'donkey kong country', 'street fighter', 'mortal kombat'
+                    ],
+                    'Nintendo 64': [
+                        'super mario 64', 'zelda.*ocarina', 'zelda.*majora', 'goldeneye', 'mario kart 64',
+                        'super smash bros', 'mario party', 'donkey kong 64', 'banjo', 'perfect dark'
+                    ],
+                    'Game Boy': [
+                        'tetris.*gb', 'pokemon.*red', 'pokemon.*blue', 'zelda.*links awakening', 'metroid.*ii',
+                        'super mario land', 'mega man.*gb', 'final fantasy legend'
+                    ],
+                    'Game Boy Color': [
+                        'pokemon.*gold', 'pokemon.*silver', 'pokemon.*crystal', 'zelda.*oracle', 'mario golf',
+                        'mario tennis.*gbc', 'dragon warrior monsters'
+                    ],
+                    'Game Boy Advance': [
+                        'pokemon.*ruby', 'pokemon.*sapphire', 'pokemon.*emerald', 'zelda.*minish cap', 'metroid.*fusion',
+                        'metroid.*zero mission', 'golden sun', 'advance wars', 'fire emblem', 'mario kart.*advance'
+                    ],
+                    'Sega Genesis': [
+                        'sonic', 'streets of rage', 'phantasy star', 'shinobi', 'golden axe', 'altered beast',
+                        'ecco the dolphin', 'mortal kombat.*gen', 'nba jam.*gen'
+                    ],
+                    'PlayStation': [
+                        'final fantasy.*vii', 'final fantasy.*viii', 'final fantasy.*ix', 'metal gear solid', 'resident evil',
+                        'crash bandicoot', 'spyro', 'gran turismo', 'tekken', 'ridge racer'
+                    ],
+                    'PlayStation 2': [
+                        'grand theft auto.*san andreas', 'shadow of the colossus', 'god of war', 'final fantasy.*x',
+                        'kingdom hearts', 'dragon quest.*viii', 'persona.*3', 'persona.*4'
+                    ],
+                    'Nintendo DS': [
+                        'new super mario bros.*ds', 'pokemon.*diamond', 'pokemon.*pearl', 'pokemon.*platinum',
+                        'zelda.*phantom hourglass', 'zelda.*spirit tracks', 'mario kart.*ds'
+                    ]
+                };
+
+                for (const [system, patterns] of Object.entries(gamePatterns)) {
+                    for (const pattern of patterns) {
+                        const regex = new RegExp(pattern, 'i');
+                        if (regex.test(fileName)) {
+                            return system;
+                        }
+                    }
+                }
+
+                return 'Unknown';
+            }
+
+            async detectByFileHeader(fileData, extension) {
+                try {
+                    const buffer = fileData instanceof Blob ? await fileData.arrayBuffer() : fileData;
+                    const bytes = new Uint8Array(buffer);
+                    
+                    if (bytes.length < 16) return 'Unknown';
+
+                    // NES ROM header check
+                    if (bytes[0] === 0x4E && bytes[1] === 0x45 && bytes[2] === 0x53 && bytes[3] === 0x1A) {
+                        return 'Nintendo Entertainment System';
+                    }
+
+                    // Game Boy ROM header check
+                    if (bytes.length >= 0x148) {
+                        const nintendoLogo = bytes.slice(0x104, 0x134);
+                        const logoCheck = [0xCE, 0xED, 0x66, 0x66, 0xCC, 0x0D, 0x00, 0x0B]; // First 8 bytes of GB logo
+                        let isGameBoy = true;
+                        for (let i = 0; i < logoCheck.length; i++) {
+                            if (nintendoLogo[i] !== logoCheck[i]) {
+                                isGameBoy = false;
+                                break;
+                            }
+                        }
+                        if (isGameBoy) {
+                            // Check if it's Game Boy Color
+                            const cgbFlag = bytes[0x143];
+                            if (cgbFlag === 0x80 || cgbFlag === 0xC0) {
+                                return 'Game Boy Color';
+                            }
+                            return 'Game Boy';
+                        }
+                    }
+
+                    // Game Boy Advance ROM header check
+                    if (bytes.length >= 0xA0) {
+                        const gbaLogo = bytes.slice(0x04, 0xA0);
+                        // Check for GBA logo signature
+                        if (bytes[0xB2] === 0x96) { // Simple GBA check
+                            return 'Game Boy Advance';
+                        }
+                    }
+
+                    // SNES ROM header check (simplified)
+                    if (extension === '.smc' || extension === '.sfc') {
+                        // Check for common SNES header patterns
+                        const possibleHeaders = [0x200, 0x7FC0, 0xFFC0];
+                        for (const headerPos of possibleHeaders) {
+                            if (bytes.length > headerPos + 32) {
+                                const title = bytes.slice(headerPos, headerPos + 21);
+                                // Check if title contains valid ASCII characters
+                                let validTitle = true;
+                                for (let i = 0; i < title.length; i++) {
+                                    if (title[i] !== 0 && (title[i] < 0x20 || title[i] > 0x7E)) {
+                                        validTitle = false;
+                                        break;
+                                    }
+                                }
+                                if (validTitle) {
+                                    return 'Super Nintendo';
+                                }
+                            }
+                        }
+                    }
+
+                    // PlayStation ISO check
+                    if (extension === '.bin' || extension === '.iso') {
+                        // Check for PlayStation system identifier
+                        const systemId = new TextDecoder().decode(bytes.slice(0x8008, 0x8018));
+                        if (systemId.includes('PLAYSTATION')) {
+                            return 'PlayStation';
+                        }
+                    }
+
+                } catch (error) {
+                    console.warn('Error analyzing file header:', error);
+                }
+
+                return 'Unknown';
+            }
+
+            detectByExtension(extension, fileName) {
+                // Handle ambiguous extensions with better logic
+                const ambiguousExtensions = {
+                    '.bin': () => {
+                        if (fileName.includes('genesis') || fileName.includes('megadrive') || fileName.includes('sega')) {
+                            return 'Sega Genesis';
+                        }
+                        if (fileName.includes('psx') || fileName.includes('playstation') || fileName.includes('disc')) {
+                            return 'PlayStation';
+                        }
+                        if (fileName.includes('atari')) {
+                            return 'Atari 2600';
+                        }
+                        return 'Unknown'; // Will fall back to other detection methods
+                    },
+                    '.iso': () => {
+                        if (fileName.includes('psx') || fileName.includes('playstation')) {
+                            return 'PlayStation';
+                        }
+                        if (fileName.includes('ps2') || fileName.includes('playstation 2')) {
+                            return 'PlayStation 2';
+                        }
+                        if (fileName.includes('psp')) {
+                            return 'PlayStation Portable';
+                        }
+                        if (fileName.includes('gamecube') || fileName.includes('gc')) {
+                            return 'GameCube';
+                        }
+                        if (fileName.includes('wii')) {
+                            return 'Wii';
+                        }
+                        return 'Unknown';
+                    },
+                    '.rom': () => {
+                        if (fileName.includes('n64') || fileName.includes('nintendo 64')) {
+                            return 'Nintendo 64';
+                        }
+                        if (fileName.includes('atari')) {
+                            return 'Atari 2600';
+                        }
+                        return 'Unknown';
+                    }
+                };
+
+                // Check if this is an ambiguous extension
+                if (ambiguousExtensions[extension]) {
+                    const result = ambiguousExtensions[extension]();
+                    if (result !== 'Unknown') {
+                        return result;
+                    }
+                }
+
+                // Standard extension mapping for unambiguous extensions
+                for (let system in this.systemExtensions) {
+                    if (this.systemExtensions[system].includes(extension)) {
+                        // Skip ambiguous extensions that we've already handled
+                        if (['.bin', '.iso', '.rom'].includes(extension)) {
+                            continue;
+                        }
+                        return system;
+                    }
+                }
+
+                return 'Unknown';
+            }
+
+            addRom(fileName, fileData, system) {
+                if (!this.roms[system]) {
+                    this.roms[system] = [];
+                }
+
+                const rom = {
+                    name: fileName,
+                    system: system,
+                    size: fileData.size || 0,
+                    data: fileData,
+                    dateAdded: new Date().toISOString()
+                };
+
+                // Check if ROM already exists
+                const existingIndex = this.roms[system].findIndex(r => r.name === fileName);
+                if (existingIndex !== -1) {
+                    this.roms[system][existingIndex] = rom;
+                } else {
+                    this.roms[system].push(rom);
+                }
+            }
+
+            updateDisplay() {
+                this.updateStats();
+                this.updateFilters();
+                this.updateSystemsGrid();
+            }
+
+            updateStats() {
+                let totalRoms = 0;
+                let totalSize = 0;
+                const systems = Object.keys(this.roms).length;
+
+                for (let system in this.roms) {
+                    totalRoms += this.roms[system].length;
+                    for (let rom of this.roms[system]) {
+                        totalSize += rom.size || 0;
+                    }
+                }
+
+                document.getElementById('totalRoms').textContent = totalRoms;
+                document.getElementById('totalSystems').textContent = systems;
+                document.getElementById('totalSize').textContent = (totalSize / (1024 * 1024)).toFixed(1) + ' MB';
+            }
+
+            updateFilters() {
+                const filtersContainer = document.getElementById('filters');
+                const systems = Object.keys(this.roms).sort();
+
+                filtersContainer.innerHTML = '<button class="filter-btn active" data-system="all">All Systems</button>';
+
+                for (let system of systems) {
+                    const button = document.createElement('button');
+                    button.className = 'filter-btn';
+                    button.textContent = `${system} (${this.roms[system].length})`;
+                    button.setAttribute('data-system', system);
+                    button.addEventListener('click', () => this.filterBySystem(system));
+                    filtersContainer.appendChild(button);
+                }
+
+                // Add event listener for "All Systems" button
+                filtersContainer.querySelector('[data-system="all"]').addEventListener('click', () => this.filterBySystem('all'));
+            }
+
+            updateSystemsGrid() {
+                const grid = document.getElementById('systemsGrid');
+                const systems = Object.keys(this.roms).sort();
+
+                if (systems.length === 0) {
+                    grid.innerHTML = '<div class="loading">Upload ROM files to get started!</div>';
+                    return;
+                }
+
+                grid.innerHTML = '';
+
+                for (let system of systems) {
+                    const systemCard = this.createSystemCard(system, this.roms[system]);
+                    grid.appendChild(systemCard);
+                }
+            }
+
+            createSystemCard(systemName, roms) {
+                const card = document.createElement('div');
+                card.className = 'system-card';
+                card.setAttribute('data-system', systemName);
+
+                const title = document.createElement('div');
+                title.className = 'system-title';
+                title.textContent = `${systemName} (${roms.length} ROMs)`;
+                card.appendChild(title);
+
+                const romList = document.createElement('div');
+                romList.className = 'rom-list';
+
+                for (let rom of roms) {
+                    const romItem = this.createRomItem(rom);
+                    romList.appendChild(romItem);
+                }
+
+                card.appendChild(romList);
+                return card;
+            }
+
+            createRomItem(rom) {
+                const item = document.createElement('div');
+                item.className = 'rom-item';
+                item.setAttribute('data-rom-name', rom.name.toLowerCase());
+
+                const romInfo = document.createElement('div');
+                romInfo.className = 'rom-info';
+                romInfo.style.display = 'flex';
+                romInfo.style.alignItems = 'center';
+
+                const name = document.createElement('div');
+                name.className = 'rom-name';
+                name.textContent = rom.name;
+                name.title = rom.name;
+
+                const size = document.createElement('div');
+                size.className = 'rom-size';
+                size.textContent = (rom.size / (1024 * 1024)).toFixed(1) + ' MB';
+
+                romInfo.appendChild(name);
+                romInfo.appendChild(size);
+
+                const romControls = document.createElement('div');
+                romControls.className = 'rom-controls';
+                romControls.style.display = 'flex';
+                romControls.style.alignItems = 'center';
+
+                // Console Selector - ADDED
+                const consoleSelector = document.createElement('select');
+                consoleSelector.className = 'console-selector';
+                
+                // Get list of supported systems from emulator cores
+                const supportedSystems = this.getSupportedSystems();
+                const allSystems = Object.keys(this.systemExtensions);
+                
+                consoleSelector.innerHTML = allSystems.map(sys => {
+                    const isSupported = supportedSystems.includes(sys);
+                    const label = isSupported ? sys : `${sys} (Unsupported)`;
+                    return `<option value="${sys}" ${sys === rom.system ? 'selected' : ''} ${!isSupported ? 'style="color: #ff6b6b;"' : ''}>${label}</option>`;
+                }).join('');
+                
+                consoleSelector.addEventListener('change', (e) => {
+                    this.changeRomSystem(rom, e.target.value);
+                });
+                romControls.appendChild(consoleSelector);
+
+                const actions = document.createElement('div');
+                actions.className = 'rom-actions';
+
+                const playBtn = document.createElement('button');
+                playBtn.className = 'action-btn play-btn';
+                playBtn.textContent = 'Play';
+                playBtn.addEventListener('click', () => this.playRom(rom));
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'action-btn delete-btn';
+                deleteBtn.textContent = 'Delete';
+                deleteBtn.addEventListener('click', () => this.deleteRom(rom));
+
+                actions.appendChild(playBtn);
+                actions.appendChild(deleteBtn);
+
+                romControls.appendChild(actions);
+
+                item.appendChild(romInfo);
+                item.appendChild(romControls);
+
+                return item;
+            }
+
+            changeRomSystem(rom, newSystem) {
+                if (rom.system === newSystem) return;
+
+                const oldSystemRoms = this.roms[rom.system];
+                const index = oldSystemRoms.findIndex(r => r.name === rom.name);
+
+                if (index !== -1) {
+                    oldSystemRoms.splice(index, 1);
+                    if (oldSystemRoms.length === 0) {
+                        delete this.roms[rom.system];
+                    }
+
+                    this.addRom(rom.name, rom.data, newSystem); // Re-add with new system
+                    this.saveToStorage();
+                    this.updateDisplay();
+                }
+            }
+
+            filterBySystem(system) {
+                const filterBtns = document.querySelectorAll('.filter-btn');
+                filterBtns.forEach(btn => btn.classList.remove('active'));
+
+                const activeBtn = document.querySelector(`[data-system="${system}"]`);
+                if (activeBtn) activeBtn.classList.add('active');
+
+                const systemCards = document.querySelectorAll('.system-card');
+                systemCards.forEach(card => {
+                    if (system === 'all' || card.getAttribute('data-system') === system) {
+                        card.style.display = 'block';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            }
+
+            filterRoms(searchTerm) {
+                const romItems = document.querySelectorAll('.rom-item');
+                const term = searchTerm.toLowerCase();
+
+                romItems.forEach(item => {
+                    const romName = item.getAttribute('data-rom-name');
+                    if (romName.includes(term)) {
+                        item.style.display = 'flex';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            }
+
+            playRom(rom) {
+                // Create a URL for the ROM file
+                const url = URL.createObjectURL(rom.data);
+
+                // Open the emulator with the ROM
+                const emulatorUrl = `index.html?rom=${encodeURIComponent(rom.name)}&system=${encodeURIComponent(rom.system)}`;
+
+                // Store the ROM data temporarily for the emulator to access
+                sessionStorage.setItem('currentRom', url);
+                sessionStorage.setItem('currentRomName', rom.name);
+                sessionStorage.setItem('currentRomSystem', rom.system);
+
+                // Open in new tab or redirect
+                window.open(emulatorUrl, '_blank');
+            }
+
+            deleteRom(rom) {
+                if (confirm(`Are you sure you want to delete "${rom.name}"?`)) {
+                    const systemRoms = this.roms[rom.system];
+                    const index = systemRoms.findIndex(r => r.name === rom.name);
+
+                    if (index !== -1) {
+                        systemRoms.splice(index, 1);
+
+                        // Remove system if no ROMs left
+                        if (systemRoms.length === 0) {
+                            delete this.roms[rom.system];
+                        }
+
+                        this.saveToStorage();
+                        this.updateDisplay();
+                    }
+                }
+            }
+
+            deleteAllRoms() {
+                const totalRoms = Object.values(this.roms).reduce((total, systemRoms) => total + systemRoms.length, 0);
+                
+                if (totalRoms === 0) {
+                    alert("No ROMs to delete!");
+                    return;
+                }
+
+                if (confirm(`Are you sure you want to delete all ${totalRoms} ROMs? This action cannot be undone.`)) {
+                    this.roms = {};
+                    this.saveToStorage();
+                    this.updateDisplay();
+                }
+            }
+
+            saveToStorage() {
+                try {
+                    // Convert file data to base64 for storage
+                    const romsForStorage = {};
+
+                    for (let system in this.roms) {
+                        romsForStorage[system] = [];
+
+                        for (let rom of this.roms[system]) {
+                            // Store metadata only, not the actual file data for now
+                            romsForStorage[system].push({
+                                name: rom.name,
+                                system: rom.system,
+                                size: rom.size,
+                                dateAdded: rom.dateAdded
+                            });
+                        }
+                    }
+
+                    localStorage.setItem('romLibrary', JSON.stringify(romsForStorage));
+                } catch (error) {
+                    console.error('Error saving to storage:', error);
+                }
+            }
+
+            getSupportedSystems() {
+                // Based on the emulator cores available
+                // This maps to the core names that are actually supported by EmulatorJS
+                const supportedCores = [
+                    'Nintendo Entertainment System',
+                    'Super Nintendo',
+                    'Nintendo 64',
+                    'Game Boy',
+                    'Game Boy Color', 
+                    'Game Boy Advance',
+                    'Nintendo DS',
+                    'Sega Genesis',
+                    'Sega Game Gear',
+                    'Sega Master System',
+                    'PC Engine',
+                    'Neo Geo Pocket',
+                    'WonderSwan',
+                    'PlayStation',
+                    'PlayStation Portable',
+                    'Arcade',
+                    'Atari 2600',
+                    'Atari 5200',
+                    'Atari 7800',
+                    'Atari Lynx',
+                    'Virtual Boy'
+                ];
+                return supportedCores;
+            }
+
+            loadFromStorage() {
+                try {
+                    const stored = localStorage.getItem('romLibrary');
+                    if (stored) {
+                        const romsData = JSON.parse(stored);
+                        // Note: This only loads metadata, actual ROM files need to be re-uploaded
+                        // You could extend this to use IndexedDB for storing actual file data
+                        this.roms = romsData;
+                    }
+                } catch (error) {
+                    console.error('Error loading from storage:', error);
+                }
+            }
+        }
+
+        // Initialize the library when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            window.romLibrary = new ROMLibrary();
+        });
+    </script>
+</body>
+</html>
